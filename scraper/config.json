@@ -1,8 +1,8 @@
 {
   "limits": {
-    "per_site_products": 50,
-    "per_site_pages": 3,
-    "timeout_ms": 45000,
+    "per_site_products": 200,
+    "per_site_pages": 10,
+    "timeout_ms": 90000,
     "concurrency": 2
   },
   "default_currency": "EGP",

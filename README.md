@@ -47,3 +47,6 @@ The output will be at `out/snapshot.jsonl`.
 - This repo uses a **resilient heuristic** to find product cards and fields. You can gradually improve coverage by adding domain-specific overrides under `overrides` in `config.json`.
 - If a site blocks headless browsing, try enabling `--slow` or increase timeouts.
 - To cap products per site, use `--limit` (default: 50).
+
+
+This version crawls listing pages and pagination and targets up to 200 products per site.
