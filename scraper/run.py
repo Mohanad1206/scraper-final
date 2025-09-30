@@ -12,7 +12,14 @@ from typing import Dict, Any, List, Optional
 import httpx
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_fixed
-from scraper.utils.extract import heuristic_cards, detect_currency, parse_price
+# --- DEFENSIVE_IMPORT: ensure package imports work when executed as a script ---
+try:
+    from scraper.utils.extract import heuristic_cards, detect_currency, parse_price  # type: ignore
+except ModuleNotFoundError:
+    # Fallback: add parent dir to sys.path and import relative
+    import sys as _sys, os as _os
+    _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
+    from utils.extract import heuristic_cards, detect_currency, parse_price  # type: ignore
 
 # Playwright is optional until runtime so the module import doesn't break packaging.
 from playwright.sync_api import sync_playwright

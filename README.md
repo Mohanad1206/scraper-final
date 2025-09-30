@@ -29,7 +29,7 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m playwright install chromium
-python scraper/run.py --limit 50
+python -m scraper.run --limit 50
 ```
 
 The output will be at `out/snapshot.jsonl`.
