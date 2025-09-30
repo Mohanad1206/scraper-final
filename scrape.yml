@@ -1,0 +1,65 @@
+name: Scrape & Post
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"  # 05:00 UTC daily
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Run scraper
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          mkdir -p out
+          python scraper/run.py --limit 50
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot
+          path: out/snapshot.jsonl
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Post to Make webhook if file non-empty
+        if: always()
+        env:
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+        run: |
+          set -e
+          if [ -s "out/snapshot.jsonl" ]; then
+            echo "Output exists and is non-empty."
+            if [ -n "$MAKE_WEBHOOK_URL" ]; then
+              echo "Posting to Make..."
+              curl -fsS -X POST                 -H "Content-Type: application/json"                 -d "{"source":"github","ts":"${{ github.run_number }}","repo":"${{ github.repository }}","sha":"${{ github.sha }}","artifacts":"snapshot.jsonl"}"                 "$MAKE_WEBHOOK_URL" || echo "Webhook post failed (non-fatal)."
+            else
+              echo "MAKE_WEBHOOK_URL not set; skipping webhook."
+            fi
+          else
+            echo "No output or empty output; skipping webhook."
+          fi

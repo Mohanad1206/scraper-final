@@ -1,0 +1,56 @@
+{
+  "limits": {
+    "per_site_products": 50,
+    "per_site_pages": 3,
+    "timeout_ms": 45000,
+    "concurrency": 2
+  },
+  "default_currency": "EGP",
+  "overrides": {
+    "2b.com.eg": {
+      "product_card": [
+        ".product-item",
+        ".product-item-info",
+        ".product-grid-item",
+        "[data-container='product-grid'] .product-item"
+      ],
+      "name": [
+        ".product-item-link",
+        "a.product-item-link",
+        ".product.name a"
+      ],
+      "price": [
+        ".price-wrapper .price",
+        ".price .price",
+        ".price"
+      ],
+      "url": [
+        "a.product-item-link",
+        ".product-item a"
+      ]
+    },
+    "shamystores.com": {
+      "product_card": [
+        ".product-grid-item",
+        ".product-card",
+        "[data-product-id]"
+      ],
+      "name": [
+        ".product-title",
+        ".card-title",
+        "h3 a"
+      ],
+      "price": [
+        ".price-item--regular",
+        ".price .money",
+        ".Price .money",
+        ".price"
+      ],
+      "url": [
+        "a.product-link",
+        ".product-title a",
+        "a[href*='/products/']"
+      ]
+    }
+  }
+}
