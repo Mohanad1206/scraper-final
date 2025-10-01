@@ -303,6 +303,9 @@ def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
 def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
     site_dom = domain_of(site_url)
     override = cfg.get("overrides", {}).get(site_dom, {})
+    if not isinstance(override, dict):
+        print(f"[warn] override for {site_dom} is not a dict; ignoring.", flush=True)
+        override = {}
     timeout_ms = cfg.get("limits", {}).get("timeout_ms", 120000)
     max_pages = cfg.get("limits", {}).get("per_site_pages", 15)
 
@@ -339,7 +342,7 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
         html = ""
         if prefer_static:
             try:
-                html = fetch_static(cur)
+                html = fetch_static(cur, timeout=static_timeout)
             except Exception as e:
                 print(f"[static fail-pref] {cur}: {e}", flush=True)
         if not html:
