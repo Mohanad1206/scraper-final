@@ -32,24 +32,384 @@
     "shamystores.com": {
       "product_card": [
         ".product-grid-item",
+        ".card-wrapper",
+        ".grid__item",
         ".product-card",
         "[data-product-id]"
       ],
       "name": [
-        ".product-title",
-        ".card-title",
-        "h3 a"
+        ".card__heading a",
+        ".product-title a",
+        "a.full-unstyled-link",
+        ".card-information__text"
       ],
       "price": [
+        ".price-item--sale",
         ".price-item--regular",
         ".price .money",
-        ".Price .money",
+        ".price .amount"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        ".product-title a"
+      ]
+    },
+    "egygamer.com": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".woocommerce ul.products li.product",
+        ".product-grid .product"
+      ],
+      "name": [
+        "h2.woocommerce-loop-product__title",
+        ".woocommerce-loop-product__title",
+        ".caption h4 a",
+        ".product-title a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount",
+        ".price .amount",
         ".price"
       ],
       "url": [
-        "a.product-link",
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-loop-product__link",
+        ".caption h4 a",
+        "a.product-title"
+      ]
+    },
+    "thegamecaveegypt.com": {
+      "product_card": [
+        ".grid__item",
+        ".card-wrapper",
+        ".product-card",
+        "ul.products li.product",
+        ".products .product"
+      ],
+      "name": [
+        ".card__heading a",
+        "h2.woocommerce-loop-product__title",
         ".product-title a",
-        "a[href*='/products/']"
+        "a.full-unstyled-link"
+      ],
+      "price": [
+        ".price-item--regular",
+        ".price-item--sale",
+        ".woocommerce-Price-amount",
+        ".price .money",
+        ".price .amount"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        "a.woocommerce-LoopProduct-link",
+        ".product-title a"
+      ]
+    },
+    "compume.com.eg": {
+      "product_card": [
+        ".product-item",
+        ".product-item-info",
+        ".product-grid-item"
+      ],
+      "name": [
+        "a.product-item-link",
+        ".product-item-link",
+        ".product.name a"
+      ],
+      "price": [
+        ".price .price",
+        ".price-wrapper .price",
+        ".price"
+      ],
+      "url": [
+        "a.product-item-link",
+        ".product-item a"
+      ]
+    },
+    "ahw.store": {
+      "product_card": [
+        ".grid__item",
+        ".product-card",
+        ".card-wrapper",
+        "[data-product-id]"
+      ],
+      "name": [
+        ".card__heading a",
+        ".product-title a",
+        "a.full-unstyled-link"
+      ],
+      "price": [
+        ".price-item--sale",
+        ".price-item--regular",
+        ".price .money",
+        ".price .amount"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        ".product-title a"
+      ]
+    },
+    "compumarts.com": {
+      "product_card": [
+        ".product-layout",
+        ".product-thumb",
+        ".product-grid .product-layout"
+      ],
+      "name": [
+        ".caption h4 a",
+        ".product-thumb .caption h4 a",
+        ".product-title a"
+      ],
+      "price": [
+        ".price .price-new",
+        ".price .price-old",
+        ".price",
+        ".price-new"
+      ],
+      "url": [
+        ".caption h4 a",
+        ".product-thumb a[href]"
+      ]
+    },
+    "games2egypt.com": {
+      "product_card": [
+        ".grid__item",
+        ".product-card",
+        ".card-wrapper",
+        ".product-grid-item",
+        "[data-product-id]"
+      ],
+      "name": [
+        ".card__heading a",
+        ".product-title a",
+        "a.full-unstyled-link",
+        ".card-information__text"
+      ],
+      "price": [
+        ".price-item--sale",
+        ".price-item--regular",
+        ".price .money",
+        ".price .amount",
+        ".price"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        ".product-title a",
+        ".product-card a[href]"
+      ]
+    },
+    "gamesworldegypt.com": {
+      "product_card": [
+        ".grid__item",
+        ".product-card",
+        ".card-wrapper",
+        "ul.products li.product",
+        ".products .product"
+      ],
+      "name": [
+        ".card__heading a",
+        ".product-title a",
+        "h2.woocommerce-loop-product__title",
+        "a.full-unstyled-link"
+      ],
+      "price": [
+        ".price-item--regular",
+        ".price-item--sale",
+        ".woocommerce-Price-amount",
+        ".price .money",
+        ".price .amount"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        "a.woocommerce-LoopProduct-link",
+        ".product-title a"
+      ]
+    },
+    "gamerscolony.net": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".woocommerce ul.products li.product"
+      ],
+      "name": [
+        ".woocommerce-loop-product__title",
+        "h2.woocommerce-loop-product__title",
+        ".product-title a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price"
+      ],
+      "url": [
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-loop-product__link",
+        ".product-title a"
+      ]
+    },
+    "egyptlaptop.com": {
+      "product_card": [
+        ".product-item",
+        ".product-item-info",
+        ".product-grid .product-item",
+        ".product-layout",
+        ".product-thumb"
+      ],
+      "name": [
+        "a.product-item-link",
+        ".product-item-link",
+        ".caption h4 a",
+        ".product-title a"
+      ],
+      "price": [
+        ".price .price",
+        ".price-wrapper .price",
+        ".price",
+        ".price .price-new",
+        ".price-new"
+      ],
+      "url": [
+        "a.product-item-link",
+        ".product-item a",
+        ".caption h4 a",
+        ".product-thumb a[href]"
+      ]
+    },
+    "hardwaremarket.net": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".product-layout",
+        ".product-thumb"
+      ],
+      "name": [
+        ".woocommerce-loop-product__title",
+        "h2.woocommerce-loop-product__title",
+        ".caption h4 a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price",
+        ".price-new",
+        ".price .price-new"
+      ],
+      "url": [
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-loop-product__link",
+        ".caption h4 a",
+        ".product-thumb a[href]"
+      ]
+    },
+    "pcs-souq.com": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".product-layout",
+        ".product-thumb",
+        ".product-grid .product-layout"
+      ],
+      "name": [
+        ".woocommerce-loop-product__title",
+        "h2.woocommerce-loop-product__title",
+        ".caption h4 a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price",
+        ".price-new"
+      ],
+      "url": [
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-loop-product__link",
+        ".caption h4 a",
+        ".product-thumb a[href]"
+      ]
+    },
+    "rabbitstore-eg.com": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".product-layout",
+        ".product-thumb"
+      ],
+      "name": [
+        ".woocommerce-loop-product__title",
+        "h2.woocommerce-loop-product__title",
+        ".caption h4 a",
+        ".product-title a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price",
+        ".price-new"
+      ],
+      "url": [
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-loop-product__link",
+        ".caption h4 a",
+        ".product-thumb a[href]"
+      ]
+    },
+    "tv-it.com": {
+      "product_card": [
+        ".product-item",
+        ".product-layout",
+        ".product-thumb",
+        "ul.products li.product"
+      ],
+      "name": [
+        "a.product-item-link",
+        ".caption h4 a",
+        ".woocommerce-loop-product__title"
+      ],
+      "price": [
+        ".price .price",
+        ".price-new",
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price"
+      ],
+      "url": [
+        "a.product-item-link",
+        ".caption h4 a",
+        ".product-thumb a[href]",
+        "a.woocommerce-LoopProduct-link"
+      ]
+    },
+    "egyptgamestore.com": {
+      "product_card": [
+        ".grid__item",
+        ".product-card",
+        ".card-wrapper",
+        "ul.products li.product"
+      ],
+      "name": [
+        ".card__heading a",
+        ".product-title a",
+        "h2.woocommerce-loop-product__title",
+        "a.full-unstyled-link"
+      ],
+      "price": [
+        ".price-item--regular",
+        ".price-item--sale",
+        ".woocommerce-Price-amount",
+        ".price .money",
+        ".price .amount"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        "a.woocommerce-LoopProduct-link",
+        ".product-title a"
       ]
     }
   }
