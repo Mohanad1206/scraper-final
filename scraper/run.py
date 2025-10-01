@@ -115,7 +115,7 @@ def allowed_by_filters(name: str, url: str, cfg: Dict[str, Any]) -> bool:
 
 def scrape_with_playwright(url: str, timeout_ms: int = 120000) -> str:
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+        browser = pw.chromium.launch(headless=True, args=["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"])
         context = browser.new_context(user_agent=UA, locale="en-US", timezone_id="Africa/Cairo")
         page = context.new_page()
         page.set_default_timeout(timeout_ms)
@@ -277,11 +277,11 @@ def get_html(url: str, timeout_ms: int) -> str:
     try:
         return scrape_with_playwright(url, timeout_ms=timeout_ms)
     except Exception as e:
-        print(f"[dyn fail] {url}: {e}. Falling back to static.")
+        print(f"[dyn fail] {url}: {e}. Falling back to static.", flush=True)
         try:
             return fetch_static(url)
         except Exception as e2:
-            print(f"[static fail] {url}: {e2}")
+            print(f"[static fail] {url}: {e2}", flush=True)
             return ""
 
 def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
@@ -321,7 +321,7 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
             write_jsonl(recs)
             write_csv(recs)
             all_records.extend(recs)
-            print(f"[{site_dom}] {cur} -> {len(recs)} products (total {len(all_records)}/{limit})")
+            print(f"[{site_dom}] {cur} -> {len(recs)} products (total {len(all_records)}/{limit})", flush=True)
 
         if len(visited) <= 3:
             cats = discover_category_links_by_text(html, cur, cfg)
@@ -353,13 +353,13 @@ def main():
 
     all_records = []
     for site in sites:
-        print(f"Scraping: {site}")
+        print(f"Scraping: {site}", flush=True)
         try:
             recs = scrape_site(site, cfg, args.limit)
-            print(f"  -> got {len(recs)} products for {site}")
+            print(f"  -> got {len(recs)} products for {site}", flush=True)
             all_records.extend(recs)
         except Exception as e:
-            print(f"Error scraping {site}: {e}")
+            print(f"Error scraping {site}: {e}", flush=True)
 
     # If still no files, create empty ones so downstream steps exist
     for p in (OUT_JSONL, OUT_CSV):
