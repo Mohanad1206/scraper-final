@@ -1,3 +1,4 @@
+
 import re
 from bs4 import BeautifulSoup
 
@@ -30,7 +31,6 @@ def parse_price(text: str):
         return None, raw
 
 def heuristic_cards(soup: BeautifulSoup):
-    # Try common product card patterns
     selectors = [
         "[data-product-id]",
         ".product-item",
@@ -43,11 +43,13 @@ def heuristic_cards(soup: BeautifulSoup):
         ".catalog-product",
         ".product-box",
         ".item.product",
+        ".product-layout",
+        ".product-thumb",
+        "ul.products li.product"
     ]
     for sel in selectors:
         found = soup.select(sel)
         if len(found) >= 3:
             return found
-    # fallback: guess by links containing '/product' or '/products'
     anchors = [a.parent for a in soup.select("a[href*='/product']")] + [a.parent for a in soup.select("a[href*='/products/']")]
     return anchors or []

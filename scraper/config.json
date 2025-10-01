@@ -1,34 +1,12 @@
 {
   "limits": {
-    "per_site_products": 200,
-    "per_site_pages": 10,
-    "timeout_ms": 90000,
+    "per_site_products": 500,
+    "per_site_pages": 15,
+    "timeout_ms": 120000,
     "concurrency": 2
   },
   "default_currency": "EGP",
   "overrides": {
-    "2b.com.eg": {
-      "product_card": [
-        ".product-item",
-        ".product-item-info",
-        ".product-grid-item",
-        "[data-container='product-grid'] .product-item"
-      ],
-      "name": [
-        ".product-item-link",
-        "a.product-item-link",
-        ".product.name a"
-      ],
-      "price": [
-        ".price-wrapper .price",
-        ".price .price",
-        ".price"
-      ],
-      "url": [
-        "a.product-item-link",
-        ".product-item a"
-      ]
-    },
     "shamystores.com": {
       "product_card": [
         ".product-grid-item",
@@ -47,7 +25,8 @@
         ".price-item--sale",
         ".price-item--regular",
         ".price .money",
-        ".price .amount"
+        ".price .amount",
+        ".price"
       ],
       "url": [
         "a.full-unstyled-link",
@@ -412,5 +391,83 @@
         ".product-title a"
       ]
     }
+  },
+  "filters": {
+    "exclude_keywords": [
+      "gift card",
+      "giftcard",
+      "voucher",
+      "steam",
+      "origin",
+      "playstation",
+      "ps4",
+      "ps5",
+      "xbox",
+      "nintendo",
+      "switch",
+      "console",
+      "game disk",
+      "game-disc",
+      "disc",
+      "digital code",
+      "download code",
+      "pre-order",
+      "preorder",
+      "video game",
+      "psn",
+      "xbl",
+      "n-switch",
+      "eshop",
+      "credit",
+      "coins",
+      "diamonds",
+      "gems"
+    ],
+    "include_keywords": [
+      "keyboard",
+      "mechanical keyboard",
+      "keycaps",
+      "mouse",
+      "mousepad",
+      "pad",
+      "bungee",
+      "headset",
+      "headphone",
+      "microphone",
+      "webcam",
+      "camera",
+      "speaker",
+      "soundbar",
+      "monitor",
+      "screen",
+      "stand",
+      "arm",
+      "mount",
+      "controller",
+      "gamepad",
+      "joystick",
+      "steering wheel",
+      "wheel",
+      "dock",
+      "usb hub",
+      "hub",
+      "cable",
+      "adapter",
+      "cooler",
+      "cooling pad",
+      "laptop stand",
+      "rgb",
+      "led",
+      "fan",
+      "case fan",
+      "thermal paste",
+      "wrist rest",
+      "desk mat",
+      "mouse mat",
+      "gaming chair",
+      "headphone stand",
+      "controller stand",
+      "charging dock"
+    ]
   }
 }
