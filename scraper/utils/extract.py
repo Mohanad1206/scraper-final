@@ -1,4 +1,3 @@
-
 import re
 from bs4 import BeautifulSoup
 
@@ -53,3 +52,32 @@ def heuristic_cards(soup: BeautifulSoup):
             return found
     anchors = [a.parent for a in soup.select("a[href*='/product']")] + [a.parent for a in soup.select("a[href*='/products/']")]
     return anchors or []
+
+def _first_attr(node, attrs):
+    for a in attrs:
+        if hasattr(node, "has_attr") and node.has_attr(a) and node[a]:
+            return node[a]
+    return ""
+
+def name_from_node(card):
+    # Common visible text locations first
+    txt_candidates = [
+        ".card__heading a", ".card__heading", ".product-title a", ".product-title",
+        "[itemprop='name']", "h3 a", "h2 a", "h3", "h2", "a"
+    ]
+    for sel in txt_candidates:
+        el = card.select_one(sel)
+        if el:
+            t = el.get_text(" ", strip=True)
+            if t:
+                return t
+    # Attributes on anchors/elements
+    for el in card.select("a, [data-product-title], [title], [aria-label]"):
+        val = _first_attr(el, ["data-product-title", "title", "aria-label"])
+        if val and val.strip():
+            return val.strip()
+    # Image alt as last resort
+    img = card.select_one("img[alt]")
+    if img and img.get("alt"):
+        return img["alt"].strip()
+    return ""

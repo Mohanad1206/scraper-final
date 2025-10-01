@@ -1,4 +1,3 @@
-
 import asyncio
 import csv
 import json
@@ -17,11 +16,11 @@ from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 try:
-    from scraper.utils.extract import heuristic_cards, detect_currency, parse_price  # type: ignore
+    from scraper.utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
 except ModuleNotFoundError:
     import sys as _sys, os as _os
     _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
-    from utils.extract import heuristic_cards, detect_currency, parse_price  # type: ignore
+    from utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
 
 from playwright.sync_api import sync_playwright
 
@@ -65,8 +64,7 @@ def write_csv(records: List[Dict[str, Any]]):
         if header_needed:
             w.writeheader()
         for r in records:
-            row = {k: r.get(k, "") for k in FIELDS}
-            w.writerow(row)
+            w.writerow({k: r.get(k, "") for k in FIELDS})
 
 def normalize_text(s: Optional[str]) -> str:
     if not s: return ""
@@ -147,8 +145,39 @@ def fetch_static(url: str, timeout=25) -> str:
         r.raise_for_status()
         return r.text
 
+def canon_url(u: str) -> str:
+    try:
+        p = urlparse(u)
+        return f"{p.scheme}://{p.netloc}{p.path}".rstrip("/")
+    except Exception:
+        return (u or "").strip().rstrip("/")
+
+def build_jsonld_name_map(soup) -> dict:
+    mapping = {}
+    for s in soup.find_all("script", attrs={"type":"application/ld+json"}):
+        try:
+            data = json.loads(s.string or "")
+        except Exception:
+            continue
+        def handle(obj):
+            if isinstance(obj, dict):
+                typ = obj.get("@type") or obj.get("type")
+                if typ in ("Product", "ListItem"):
+                    url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
+                    name = obj.get("name") or (obj.get("item") or {}).get("name")
+                    if url and name:
+                        mapping[canon_url(url)] = name
+                for v in obj.values():
+                    handle(v)
+            elif isinstance(obj, list):
+                for it in obj:
+                    handle(it)
+        handle(data)
+    return mapping
+
 def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
+    name_map = build_jsonld_name_map(soup)
     records = []
 
     cards = []
@@ -169,6 +198,8 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
             name = best_text(card, override["name"])
         if not name:
             name = best_text(card, ["[itemprop='name']", ".product-title", ".product-name", "h3 a", "h2 a", "h3", "h2", "a"])
+        if not name:
+            name = name_from_node(card)
 
         url = ""
         if override and override.get("url"):
@@ -176,8 +207,12 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
         if not url:
             url = best_href(card, ["a[href]"])
         url = absolutize(base_url, url)
+        if not name and url:
+            nm = name_map.get(canon_url(url))
+            if nm:
+                name = nm
 
-        price_text = best_text(card, [".price", ".price .amount", ".price .money", ".price-wrapper .price", ".Price .money", ".current-price", "[itemprop='price']"])
+        price_text = best_text(card, [".price", ".price .amount", ".price .money", ".price-wrapper .price", ".Price .money", ".current-price", "[itemprop='price']", ".woocommerce-Price-amount bdi", ".woocommerce-Price-amount"])
         price_val, raw_price = parse_price(price_text if price_text else card.get_text(" ", strip=True))
 
         currency = detect_currency(price_text) or "EGP"
@@ -204,6 +239,12 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
         }
         records.append(rec)
 
+    try:
+        empty_name_count = sum(1 for r in records if not r.get('product_name'))
+        if empty_name_count:
+            print(f"[debug] {site_label} empty product_name: {empty_name_count}", flush=True)
+    except Exception:
+        pass
     return records
 
 def discover_category_links_by_text(html: str, base_url: str, cfg: Dict[str, Any]) -> List[str]:
@@ -216,7 +257,7 @@ def discover_category_links_by_text(html: str, base_url: str, cfg: Dict[str, Any
     for a in anchors:
         text = (a.get_text() or "").strip().lower()
         href = a.get("href","")
-        if not href: 
+        if not href:
             continue
         if any(w in text for w in words) or any(w in href.lower() for w in words):
             url = absolutize(base_url, href)
@@ -248,32 +289,7 @@ def try_fetch_sitemap_urls(base: str) -> List[str]:
             out.append(u); seen.add(u)
     return out[:50]
 
-def find_next_pages(html: str, base_url: str) -> List[str]:
-    soup = BeautifulSoup(html, "lxml")
-    next_links = []
-    sels = [
-        "a[rel='next']",
-        "link[rel='next']",
-        "a.next", "a.pagination__next", "a.page-link[rel='next']",
-        "a[aria-label*='Next' i]",
-        "a[href*='?page=']", "a[href*='/page/']",
-        "li.pagination-next a", ".pagination a.next"
-    ]
-    for sel in sels:
-        for el in soup.select(sel):
-            href = el.get("href") or el.get("content")
-            if not href:
-                continue
-            url = absolutize(base_url, href)
-            if url:
-                next_links.append(url)
-    seen = set(); out = []
-    for u in next_links:
-        if urlparse(u).scheme.startswith("http") and same_domain(u, base_url) and u not in seen:
-            out.append(u); seen.add(u)
-    return out[:3]
-
-def get_html(url: str, timeout_ms: int) -> str:
+def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
     try:
         return scrape_with_playwright(url, timeout_ms=timeout_ms)
     except Exception as e:
@@ -286,15 +302,23 @@ def get_html(url: str, timeout_ms: int) -> str:
 
 def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
     site_dom = domain_of(site_url)
-    override = cfg.get("overrides", {}).get(site_dom)
+    override = cfg.get("overrides", {}).get(site_dom, {})
     timeout_ms = cfg.get("limits", {}).get("timeout_ms", 120000)
     max_pages = cfg.get("limits", {}).get("per_site_pages", 15)
 
     visited: Set[str] = set()
     queue: List[str] = [site_url]
 
-    all_records: List[Dict[str, Any]] = []
+    # Add override seeds
+    for s in override.get("seeds", [])[:10]:
+        try:
+            u = urljoin(site_url, s)
+            if u not in queue:
+                queue.append(u)
+        except Exception:
+            pass
 
+    # Seed via sitemaps
     try:
         sm = try_fetch_sitemap_urls(site_url)
         for u in sm[:10]:
@@ -302,13 +326,24 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
     except Exception:
         pass
 
+    prefer_static = (override.get("render") is False)
+
+    all_records: List[Dict[str, Any]] = []
+
     while queue and len(all_records) < limit and len(visited) < 250:
         cur = queue.pop(0)
         if cur in visited:
             continue
         visited.add(cur)
 
-        html = get_html(cur, timeout_ms=timeout_ms)
+        html = ""
+        if prefer_static:
+            try:
+                html = fetch_static(cur)
+            except Exception as e:
+                print(f"[static fail-pref] {cur}: {e}", flush=True)
+        if not html:
+            html = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
         if not html:
             continue
 
@@ -330,10 +365,21 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
                     queue.append(u)
 
         if max_pages > 0:
-            nexts = find_next_pages(html, cur)
-            for nxt in nexts[:max_pages]:
-                if nxt not in visited and nxt not in queue and len(queue) < 30:
+            soup = BeautifulSoup(html, "lxml")
+            next_links = []
+            for sel in ["a[rel='next']","link[rel='next']","a.next","a.pagination__next","a.page-link[rel='next']","a[aria-label*='Next' i]","a[href*='?page=']","a[href*='/page/']","li.pagination-next a",".pagination a.next"]:
+                for el in soup.select(sel):
+                    href = el.get("href") or el.get("content")
+                    if not href:
+                        continue
+                    u = absolutize(cur, href)
+                    if urlparse(u).scheme.startswith("http") and same_domain(u, cur):
+                        next_links.append(u)
+            seen_local = set()
+            for nxt in next_links:
+                if nxt not in visited and nxt not in queue and nxt not in seen_local and len(queue) < 30:
                     queue.append(nxt)
+                    seen_local.add(nxt)
             max_pages -= 1
 
     return all_records[:limit]
@@ -361,7 +407,6 @@ def main():
         except Exception as e:
             print(f"Error scraping {site}: {e}", flush=True)
 
-    # If still no files, create empty ones so downstream steps exist
     for p in (OUT_JSONL, OUT_CSV):
         if not os.path.exists(p):
             open(p, "w", encoding="utf-8").close()
