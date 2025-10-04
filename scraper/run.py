@@ -87,7 +87,6 @@ def best_href(node, selectors: List[str]) -> str:
     return ""
 
 def infer_availability(text: str) -> str:
-    """Default to Available unless we see an explicit out-of-stock cue."""
     t = (text or "").lower()
     oos_markers = ["out of stock", "sold out", "غير متوفر", "غير متاح", "نفدت الكمية", "out-of-stock", "unavailable"]
     if any(w in t for w in oos_markers):
@@ -181,77 +180,42 @@ def canon_url(u: str) -> str:
         return (u or "").strip().rstrip("/")
 
 def build_jsonld_name_map(soup) -> dict:
+    """Robustly parse JSON-LD; handle 'item' being either dict or string."""
     mapping = {}
     for s in soup.find_all("script", attrs={"type":"application/ld+json"}):
+        raw = s.string or ""
         try:
-            data = json.loads(s.string or "")
+            data = json.loads(raw)
         except Exception:
             continue
+
+        def record(url, name):
+            if url and name:
+                mapping[canon_url(url)] = name
+
         def handle(obj):
             if isinstance(obj, dict):
                 typ = obj.get("@type") or obj.get("type")
                 if typ in ("Product", "ListItem"):
-                    url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
-                    name = obj.get("name") or (obj.get("item") or {}).get("name")
-                    if url and name:
-                        mapping[canon_url(url)] = name
+                    url = obj.get("url")
+                    name = obj.get("name")
+                    item = obj.get("item")
+                    # item may be dict or string
+                    if not url and isinstance(item, dict):
+                        url = item.get("@id") or item.get("url")
+                    elif not url and isinstance(item, str):
+                        url = item
+                    if not name and isinstance(item, dict):
+                        name = item.get("name")
+                    record(url, name)
                 for v in obj.values():
                     handle(v)
             elif isinstance(obj, list):
                 for it in obj:
                     handle(it)
+            # ignore primitives
         handle(data)
     return mapping
-
-def discover_category_links_by_text(html: str, base_url: str, cfg: Dict[str, Any]) -> List[str]:
-    soup = BeautifulSoup(html, "lxml")
-    anchors = soup.select("a[href]")
-    inc = [w.lower() for w in cfg.get("filters", {}).get("include_keywords", [])]
-    words = set(inc + ["accessor","gaming","keyboard","mouse","headset","controller","gamepad","webcam","microphone","monitor","stand","mount","arm","dock","usb","cable","rgb","chair","pad","mat"])
-    out, seen = [], set()
-    for a in anchors:
-        text = (a.get_text() or "").strip().lower()
-        href = a.get("href","")
-        if not href:
-            continue
-        if any(w in text for w in words) or any(w in href.lower() for w in words):
-            url = absolutize(base_url, href)
-            if urlparse(url).scheme.startswith("http") and same_domain(url, base_url) and url not in seen:
-                out.append(url); seen.add(url)
-    return out[:12]
-
-def try_fetch_sitemap_urls(base: str) -> List[str]:
-    candidates = ["/sitemap.xml","/sitemap_index.xml","/sitemap-index.xml","/sitemap-products.xml","/sitemap_products_1.xml"]
-    found = []
-    for c in candidates:
-        url = urljoin(base, c)
-        try:
-            xml = fetch_static(url)
-        except Exception:
-            continue
-        try:
-            root = BeautifulSoup(xml, "xml")
-            for loc in root.find_all("loc"):
-                u = loc.get_text(strip=True)
-                if any(k in u for k in ["/product","/products","/category","/collections","/catalog"]):
-                    if same_domain(u, base):
-                        found.append(u)
-        except Exception:
-            pass
-    seen = set(); out = []
-    for u in found:
-        if u not in seen:
-            out.append(u); seen.add(u)
-    return out[:50]
-
-def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
-    try:
-        return scrape_with_playwright(url, timeout_ms=timeout_ms)
-    except Exception as e:
-        try:
-            return fetch_static(url)
-        except Exception:
-            return ""
 
 def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
@@ -326,6 +290,56 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
 
     return records
 
+def try_fetch_sitemap_urls(base: str) -> List[str]:
+    from bs4 import BeautifulSoup as _BS
+    found = []
+    for c in ["/sitemap.xml","/sitemap_index.xml","/sitemap-index.xml","/sitemap-products.xml","/sitemap_products_1.xml"]:
+        url = urljoin(base, c)
+        try:
+            xml = fetch_static(url)
+        except Exception:
+            continue
+        try:
+            root = _BS(xml, "xml")
+            for loc in root.find_all("loc"):
+                u = loc.get_text(strip=True)
+                if any(k in u for k in ["/product","/products","/category","/collections","/catalog"]):
+                    if same_domain(u, base):
+                        found.append(u)
+        except Exception:
+            pass
+    seen = set(); out = []
+    for u in found:
+        if u not in seen:
+            out.append(u); seen.add(u)
+    return out[:50]
+
+def discover_category_links_by_text(html: str, base_url: str, cfg: Dict[str, Any]) -> List[str]:
+    soup = BeautifulSoup(html, "lxml")
+    anchors = soup.select("a[href]")
+    inc = [w.lower() for w in cfg.get("filters", {}).get("include_keywords", [])]
+    words = set(inc + ["accessor","gaming","keyboard","mouse","headset","controller","gamepad","webcam","microphone","monitor","stand","mount","arm","dock","usb","cable","rgb","chair","pad","mat"])
+    out, seen = [], set()
+    for a in anchors:
+        text = (a.get_text() or "").strip().lower()
+        href = a.get("href","")
+        if not href:
+            continue
+        if any(w in text for w in words) or any(w in href.lower() for w in words):
+            url = absolutize(base_url, href)
+            if urlparse(url).scheme.startswith("http") and same_domain(url, base_url) and url not in seen:
+                out.append(url); seen.add(url)
+    return out[:12]
+
+def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
+    try:
+        return scrape_with_playwright(url, timeout_ms=timeout_ms)
+    except Exception:
+        try:
+            return fetch_static(url)
+        except Exception:
+            return ""
+
 def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
     site_dom = domain_of(site_url)
     overrides_raw = cfg.get("overrides", {})
@@ -343,7 +357,6 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
     visited: Set[str] = set()
     queue: List[str] = [site_url]
 
-    # Seeds
     for s in override.get("seeds", [])[:10]:
         try:
             u = urljoin(site_url, s)
@@ -352,7 +365,6 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
         except Exception:
             pass
 
-    # Sitemaps
     try:
         sm = try_fetch_sitemap_urls(site_url)
         for u in sm[:10]:
@@ -369,7 +381,6 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
                 return fetch_static(cur, timeout=static_timeout)
             except Exception:
                 pass
-        # dynamic first or static failed
         return get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
 
     while queue and (unlimited or len(all_records) < limit) and len(visited) < 5000:
@@ -384,7 +395,6 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
 
         recs = extract_products(html, cur, site_dom, override, cfg)
 
-        # prefer_static fallback: if zero found, try dynamic once
         if prefer_static and not recs:
             html2 = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
             if html2 and html2 != html:
@@ -400,14 +410,12 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
             write_csv(recs)
             all_records.extend(recs)
 
-        # simple discovery only at the first few pages
         if len(visited) <= 3:
             cats = discover_category_links_by_text(html, cur, cfg)
             for u in cats:
                 if u not in visited and u not in queue and len(queue) < 60:
                     queue.append(u)
 
-        # next pages
         if max_pages > 0:
             soup = BeautifulSoup(html, "lxml")
             nexts = []
