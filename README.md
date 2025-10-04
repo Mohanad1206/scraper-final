@@ -1,11 +1,7 @@
-# Web Scraper — v11
-- Multi-site adapters (Shamy, EgyGamer, TheGameCaveEgypt, Compume, AHW, Compumarts, Games2Egypt, GamesWorldEgypt, GamersColony, EgyptLaptop, HardwareMarket, PCS-Souq, RabbitStore, TV-IT, EgyptGameStore).
-- Category filters (PC accessories + controllers; excludes video games/gift cards/consoles).
-- Name extraction: attributes + JSON-LD fallback.
-- Seeds per domain + sitemap discovery + pagination.
-- Default 500/site, CSV + JSONL outputs, commits to `data/` (PR fallback if branch protected).
-
-## Sheets
-```
-=IMPORTDATA("https://raw.githubusercontent.com/<OWNER>/<REPO>/<BRANCH>/data/snapshot.csv")
-```
+# Web Scraper — v16
+- **Availability rule:** default to **Available** unless the card text explicitly says **Out of Stock** (Arabic cues supported).
+- **Accessories-only** with broad keywords + URL-path heuristic.
+- **Price range** filter: 100–2000 EGP (parsed numeric).
+- **Unlimited output** when run with `--limit 0` (workflow uses this).
+- JSON-LD + attribute fallbacks for names; per-site adapters + seeds; static/dynamic per domain with fallback.
+- Outputs CSV and JSONL -> committed to `data/` or PR if protected.

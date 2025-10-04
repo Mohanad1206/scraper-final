@@ -1,19 +1,16 @@
-import asyncio
-import csv
+import argparse
 import json
 import os
 import re
-import sys
-import time
-import tldextract
-import argparse
-from urllib.parse import urljoin, urlparse
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
+from urllib.parse import urljoin, urlparse
 
 import httpx
+import tldextract
 from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_fixed
+from playwright.sync_api import sync_playwright
 
 try:
     from scraper.utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
@@ -22,14 +19,11 @@ except ModuleNotFoundError:
     _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
     from utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
 
-from playwright.sync_api import sync_playwright
-
 OUT_DIR = "out"
 OUT_JSONL = os.path.join(OUT_DIR, "snapshot.jsonl")
 OUT_CSV = os.path.join(OUT_DIR, "snapshot.csv")
 CONFIG_PATH = "scraper/config.json"
 SITES_PATH = "scraper/sites.txt"
-
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 FIELDS = ["timestamp_iso","site_name","product_name","sku","product_url","status","price_value","currency","raw_price_text","source_url","notes"]
@@ -59,8 +53,9 @@ def write_jsonl(records: List[Dict[str, Any]]):
 def write_csv(records: List[Dict[str, Any]]):
     os.makedirs(OUT_DIR, exist_ok=True)
     header_needed = not os.path.exists(OUT_CSV) or os.path.getsize(OUT_CSV) == 0
+    import csv as _csv
     with open(OUT_CSV, "a", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = _csv.DictWriter(f, fieldnames=FIELDS)
         if header_needed:
             w.writeheader()
         for r in records:
@@ -87,33 +82,59 @@ def best_href(node, selectors: List[str]) -> str:
         el = node.select_one(sel)
         if el and el.has_attr("href"):
             return el["href"]
-    if node.name == "a" and node.has_attr("href"):
+    if getattr(node, "name", "") == "a" and node.has_attr("href"):
         return node["href"]
     return ""
 
 def infer_availability(text: str) -> str:
-    t = text.lower()
-    if any(w in t for w in ["out of stock", "sold out", "غير متوفر", "غير متاح"]):
+    """Default to Available unless we see an explicit out-of-stock cue."""
+    t = (text or "").lower()
+    oos_markers = ["out of stock", "sold out", "غير متوفر", "غير متاح", "نفدت الكمية", "out-of-stock", "unavailable"]
+    if any(w in t for w in oos_markers):
         return "Out of Stock"
-    if any(w in t for w in ["in stock", "available", "متاح", "متوفر"]):
-        return "Available"
-    return "Unknown"
+    return "Available"
 
-def allowed_by_filters(name: str, url: str, cfg: Dict[str, Any]) -> bool:
+def allowed_by_filters(name: str, url: str, cfg: Dict[str, Any], price: float | None = None) -> bool:
     name_l = (name or "").lower()
     url_l = (url or "").lower()
     filt = cfg.get("filters", {})
     inc = [w.lower() for w in filt.get("include_keywords", [])]
     exc = [w.lower() for w in filt.get("exclude_keywords", [])]
+
     if any(w in name_l or w in url_l for w in exc):
         return False
-    if inc:
-        return any(w in name_l or w in url_l for w in inc)
+
+    pf = cfg.get("price_filter") or {}
+    try:
+        lo = float(pf.get("min")) if pf.get("min") is not None else None
+        hi = float(pf.get("max")) if pf.get("max") is not None else None
+    except Exception:
+        lo = hi = None
+    if price is not None:
+        if lo is not None and price < lo:
+            return False
+        if hi is not None and price > hi:
+            return False
+
+    hit = any(w in name_l or w in url_l for w in inc)
+    if not hit:
+        if any(p in url_l for p in [
+            "/accessor", "/accessories", "/controllers", "/controller", "/keyboards",
+            "/keyboard", "/mouse", "/mice", "/headset", "/headphone", "/audio",
+            "/webcam", "/monitor", "/stands", "/mount", "/case", "/cooler", "/fans",
+            "/cables", "/adapter", "/gaming-gear", "/gaming-accessories", "/peripherals"
+        ]):
+            hit = True
+    if inc and not hit:
+        return False
     return True
 
-def scrape_with_playwright(url: str, timeout_ms: int = 120000) -> str:
+def scrape_with_playwright(url: str, timeout_ms: int = 60000) -> str:
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True, args=["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"])
+        browser = pw.chromium.launch(
+            headless=True,
+            args=["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-blink-features=AutomationControlled"]
+        )
         context = browser.new_context(user_agent=UA, locale="en-US", timezone_id="Africa/Cairo")
         page = context.new_page()
         page.set_default_timeout(timeout_ms)
@@ -123,7 +144,7 @@ def scrape_with_playwright(url: str, timeout_ms: int = 120000) -> str:
         page.add_init_script("Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]});")
         page.goto(url, wait_until="domcontentloaded")
         texts = ["Load more","Show more","View more","عرض المزيد","مشاهدة المزيد"]
-        for _ in range(5):
+        for _ in range(3):
             for t in texts:
                 try:
                     page.get_by_text(t, exact=False).click(timeout=1000)
@@ -139,7 +160,14 @@ def scrape_with_playwright(url: str, timeout_ms: int = 120000) -> str:
 
 @retry(stop=stop_after_attempt(2), wait=wait_fixed(1))
 def fetch_static(url: str, timeout=25) -> str:
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; WebScraperBot/1.2)"}
+    headers = {
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+        "Referer": url,
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+    }
     with httpx.Client(follow_redirects=True, timeout=timeout) as client:
         r = client.get(url, headers=headers)
         r.raise_for_status()
@@ -175,85 +203,12 @@ def build_jsonld_name_map(soup) -> dict:
         handle(data)
     return mapping
 
-def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
-    soup = BeautifulSoup(html, "lxml")
-    name_map = build_jsonld_name_map(soup)
-    records = []
-
-    cards = []
-    used = "heuristic"
-    if override and override.get("product_card"):
-        for sel in override["product_card"]:
-            got = soup.select(sel)
-            if len(got) >= 3:
-                cards = got
-                used = "override"
-                break
-    if not cards:
-        cards = heuristic_cards(soup)
-
-    for card in cards[:600]:
-        name = ""
-        if override and override.get("name"):
-            name = best_text(card, override["name"])
-        if not name:
-            name = best_text(card, ["[itemprop='name']", ".product-title", ".product-name", "h3 a", "h2 a", "h3", "h2", "a"])
-        if not name:
-            name = name_from_node(card)
-
-        url = ""
-        if override and override.get("url"):
-            url = best_href(card, override["url"])
-        if not url:
-            url = best_href(card, ["a[href]"])
-        url = absolutize(base_url, url)
-        if not name and url:
-            nm = name_map.get(canon_url(url))
-            if nm:
-                name = nm
-
-        price_text = best_text(card, [".price", ".price .amount", ".price .money", ".price-wrapper .price", ".Price .money", ".current-price", "[itemprop='price']", ".woocommerce-Price-amount bdi", ".woocommerce-Price-amount"])
-        price_val, raw_price = parse_price(price_text if price_text else card.get_text(" ", strip=True))
-
-        currency = detect_currency(price_text) or "EGP"
-        status = infer_availability(card.get_text(" ", strip=True))
-
-        if not name and not price_val and url == base_url:
-            continue
-
-        if not allowed_by_filters(name, url, cfg):
-            continue
-
-        rec = {
-            "timestamp_iso": datetime.now(timezone.utc).isoformat(),
-            "site_name": site_label,
-            "product_name": name,
-            "sku": "",
-            "product_url": url,
-            "status": status,
-            "price_value": price_val if price_val is not None else "",
-            "currency": currency,
-            "raw_price_text": raw_price,
-            "source_url": base_url,
-            "notes": used
-        }
-        records.append(rec)
-
-    try:
-        empty_name_count = sum(1 for r in records if not r.get('product_name'))
-        if empty_name_count:
-            print(f"[debug] {site_label} empty product_name: {empty_name_count}", flush=True)
-    except Exception:
-        pass
-    return records
-
 def discover_category_links_by_text(html: str, base_url: str, cfg: Dict[str, Any]) -> List[str]:
     soup = BeautifulSoup(html, "lxml")
     anchors = soup.select("a[href]")
     inc = [w.lower() for w in cfg.get("filters", {}).get("include_keywords", [])]
     words = set(inc + ["accessor","gaming","keyboard","mouse","headset","controller","gamepad","webcam","microphone","monitor","stand","mount","arm","dock","usb","cable","rgb","chair","pad","mat"])
-    out = []
-    seen = set()
+    out, seen = [], set()
     for a in anchors:
         text = (a.get_text() or "").strip().lower()
         href = a.get("href","")
@@ -293,26 +248,102 @@ def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
     try:
         return scrape_with_playwright(url, timeout_ms=timeout_ms)
     except Exception as e:
-        print(f"[dyn fail] {url}: {e}. Falling back to static.", flush=True)
         try:
             return fetch_static(url)
-        except Exception as e2:
-            print(f"[static fail] {url}: {e2}", flush=True)
+        except Exception:
             return ""
+
+def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    soup = BeautifulSoup(html, "lxml")
+    name_map = build_jsonld_name_map(soup)
+    records: List[Dict[str, Any]] = []
+    if not isinstance(override, dict):
+        override = {}
+
+    cards = []
+    used = "heuristic"
+    if override.get("product_card"):
+        for sel in override["product_card"]:
+            got = soup.select(sel)
+            if len(got) >= 3:
+                cards = got
+                used = "override"
+                break
+    if not cards:
+        cards = heuristic_cards(soup)
+
+    for card in cards[:800]:
+        name = ""
+        if override.get("name"):
+            name = best_text(card, override["name"])
+        if not name:
+            name = best_text(card, ["[itemprop='name']", ".product-title", ".product-name", "h3 a", "h2 a", "h3", "h2", "a"])
+        if not name:
+            name = name_from_node(card)
+
+        url = ""
+        if override.get("url"):
+            url = best_href(card, override["url"])
+        if not url:
+            url = best_href(card, ["a[href]"])
+        url = absolutize(base_url, url)
+        if not name and url:
+            nm = name_map.get(canon_url(url))
+            if nm:
+                name = nm
+
+        price_text = best_text(card, [".price", ".price .amount", ".price .money", ".price-wrapper .price", ".Price .money", ".current-price", "[itemprop='price']", ".woocommerce-Price-amount bdi", ".woocommerce-Price-amount"])
+        price_val, raw_price = parse_price(price_text if price_text else card.get_text(" ", strip=True))
+
+        currency = detect_currency(price_text) or "EGP"
+        status = infer_availability(card.get_text(" ", strip=True))
+
+        # If min price is set and price unknown -> skip
+        pf = cfg.get("price_filter") or {}
+        if (price_val is None) and (pf.get("min") is not None):
+            continue
+
+        if not allowed_by_filters(name, url, cfg, price_val if isinstance(price_val,(int,float)) else None):
+            continue
+
+        if not name and not price_val and url == base_url:
+            continue
+
+        rec = {
+            "timestamp_iso": datetime.now(timezone.utc).isoformat(),
+            "site_name": site_label,
+            "product_name": name,
+            "sku": "",
+            "product_url": url,
+            "status": status,
+            "price_value": price_val if price_val is not None else "",
+            "currency": currency,
+            "raw_price_text": raw_price,
+            "source_url": base_url,
+            "notes": used
+        }
+        records.append(rec)
+
+    return records
 
 def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
     site_dom = domain_of(site_url)
-    override = cfg.get("overrides", {}).get(site_dom, {})
+    overrides_raw = cfg.get("overrides", {})
+    if not isinstance(overrides_raw, dict):
+        overrides_raw = {}
+    override = overrides_raw.get(site_dom) or {}
     if not isinstance(override, dict):
-        print(f"[warn] override for {site_dom} is not a dict; ignoring.", flush=True)
         override = {}
-    timeout_ms = cfg.get("limits", {}).get("timeout_ms", 120000)
-    max_pages = cfg.get("limits", {}).get("per_site_pages", 15)
+
+    timeout_ms = override.get("dynamic_timeout_ms", cfg.get("limits", {}).get("timeout_ms", 60000))
+    static_timeout = override.get("static_timeout_sec", 12)
+    max_pages = override.get("per_site_pages", cfg.get("limits", {}).get("per_site_pages", 10))
+    prefer_static = (override.get("render") is False)
 
     visited: Set[str] = set()
     queue: List[str] = [site_url]
 
-    # Add override seeds
+    # Seeds
     for s in override.get("seeds", [])[:10]:
         try:
             u = urljoin(site_url, s)
@@ -321,7 +352,7 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
         except Exception:
             pass
 
-    # Seed via sitemaps
+    # Sitemaps
     try:
         sm = try_fetch_sitemap_urls(site_url)
         for u in sm[:10]:
@@ -329,47 +360,57 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
     except Exception:
         pass
 
-    prefer_static = (override.get("render") is False)
-
     all_records: List[Dict[str, Any]] = []
+    unlimited = (limit == 0)
 
-    while queue and len(all_records) < limit and len(visited) < 250:
+    def fetch(cur: str) -> str:
+        if prefer_static:
+            try:
+                return fetch_static(cur, timeout=static_timeout)
+            except Exception:
+                pass
+        # dynamic first or static failed
+        return get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
+
+    while queue and (unlimited or len(all_records) < limit) and len(visited) < 5000:
         cur = queue.pop(0)
         if cur in visited:
             continue
         visited.add(cur)
 
-        html = ""
-        if prefer_static:
-            try:
-                html = fetch_static(cur, timeout=static_timeout)
-            except Exception as e:
-                print(f"[static fail-pref] {cur}: {e}", flush=True)
-        if not html:
-            html = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
+        html = fetch(cur)
         if not html:
             continue
 
         recs = extract_products(html, cur, site_dom, override, cfg)
+
+        # prefer_static fallback: if zero found, try dynamic once
+        if prefer_static and not recs:
+            html2 = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
+            if html2 and html2 != html:
+                recs = extract_products(html2, cur, site_dom, override, cfg)
+
         if recs:
-            need = limit - len(all_records)
-            if need <= 0:
-                break
-            recs = recs[:need]
+            if not unlimited:
+                need = limit - len(all_records)
+                if need <= 0:
+                    break
+                recs = recs[:need]
             write_jsonl(recs)
             write_csv(recs)
             all_records.extend(recs)
-            print(f"[{site_dom}] {cur} -> {len(recs)} products (total {len(all_records)}/{limit})", flush=True)
 
+        # simple discovery only at the first few pages
         if len(visited) <= 3:
             cats = discover_category_links_by_text(html, cur, cfg)
             for u in cats:
-                if u not in visited and u not in queue and len(queue) < 30:
+                if u not in visited and u not in queue and len(queue) < 60:
                     queue.append(u)
 
+        # next pages
         if max_pages > 0:
             soup = BeautifulSoup(html, "lxml")
-            next_links = []
+            nexts = []
             for sel in ["a[rel='next']","link[rel='next']","a.next","a.pagination__next","a.page-link[rel='next']","a[aria-label*='Next' i]","a[href*='?page=']","a[href*='/page/']","li.pagination-next a",".pagination a.next"]:
                 for el in soup.select(sel):
                     href = el.get("href") or el.get("content")
@@ -377,19 +418,18 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
                         continue
                     u = absolutize(cur, href)
                     if urlparse(u).scheme.startswith("http") and same_domain(u, cur):
-                        next_links.append(u)
+                        nexts.append(u)
             seen_local = set()
-            for nxt in next_links:
-                if nxt not in visited and nxt not in queue and nxt not in seen_local and len(queue) < 30:
-                    queue.append(nxt)
-                    seen_local.add(nxt)
+            for nxt in nexts:
+                if nxt not in visited and nxt not in queue and nxt not in seen_local and len(queue) < 60:
+                    queue.append(nxt); seen_local.add(nxt)
             max_pages -= 1
 
-    return all_records[:limit]
+    return all_records if unlimited else all_records[:limit]
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=500, help="Max products per site")
+    ap.add_argument("--limit", type=int, default=0, help="0 = unlimited")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -400,13 +440,9 @@ def main():
         if os.path.exists(p):
             os.remove(p)
 
-    all_records = []
     for site in sites:
-        print(f"Scraping: {site}", flush=True)
         try:
-            recs = scrape_site(site, cfg, args.limit)
-            print(f"  -> got {len(recs)} products for {site}", flush=True)
-            all_records.extend(recs)
+            scrape_site(site, cfg, args.limit)
         except Exception as e:
             print(f"Error scraping {site}: {e}", flush=True)
 

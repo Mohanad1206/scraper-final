@@ -1,11 +1,15 @@
 {
   "limits": {
     "per_site_products": 500,
-    "per_site_pages": 12,
+    "per_site_pages": 10,
     "timeout_ms": 60000,
     "concurrency": 2
   },
-  "default_currency": "EGP",
+  "price_filter": {
+    "min": 100,
+    "max": 2000,
+    "currency": "EGP"
+  },
   "filters": {
     "exclude_keywords": [
       "gift card",
@@ -30,7 +34,6 @@
       "video game",
       "psn",
       "xbl",
-      "n-switch",
       "eshop",
       "credit",
       "coins",
@@ -38,35 +41,61 @@
       "gems"
     ],
     "include_keywords": [
+      "accessory",
+      "accessories",
+      "gaming accessories",
       "keyboard",
       "mechanical keyboard",
       "keycaps",
+      "switch",
+      "switches",
+      "stabilizer",
+      "wrist rest",
       "mouse",
+      "gaming mouse",
       "mousepad",
+      "mouse pad",
       "pad",
+      "desk mat",
+      "mouse mat",
       "bungee",
       "headset",
       "headphone",
+      "earbuds",
       "microphone",
+      "mic",
       "webcam",
       "camera",
       "speaker",
       "soundbar",
+      "audio interface",
+      "dac",
+      "amp",
       "monitor",
       "screen",
       "stand",
       "arm",
       "mount",
+      "holder",
+      "bracket",
       "controller",
       "gamepad",
       "joystick",
       "steering wheel",
       "wheel",
+      "shifter",
+      "pedals",
       "dock",
+      "charging dock",
       "usb hub",
       "hub",
+      "dongle",
       "cable",
       "adapter",
+      "extender",
+      "splitter",
+      "switcher",
+      "converter",
       "cooler",
       "cooling pad",
       "laptop stand",
@@ -75,13 +104,35 @@
       "fan",
       "case fan",
       "thermal paste",
-      "wrist rest",
-      "desk mat",
-      "mouse mat",
+      "heatsink",
+      "pc case",
+      "case",
+      "pci riser",
+      "riser",
+      "chair",
       "gaming chair",
       "headphone stand",
       "controller stand",
-      "charging dock"
+      "desk",
+      "bag",
+      "backpack",
+      "sleeve",
+      "cover",
+      "protector",
+      "glass",
+      "screen protector",
+      "power bank",
+      "ups",
+      "surge",
+      "strip",
+      "power strip",
+      "charger",
+      "charging",
+      "battery",
+      "storage",
+      "ssd enclosure",
+      "enclosure",
+      "hdd cage"
     ]
   },
   "overrides": {
@@ -121,43 +172,6 @@
         "/collections/accessories",
         "/collections/controllers",
         "/products"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "egygamer.com": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".woocommerce ul.products li.product",
-        ".product-grid .product"
-      ],
-      "name": [
-        "h2.woocommerce-loop-product__title",
-        ".woocommerce-loop-product__title",
-        ".product-title a",
-        ".caption h4 a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-loop-product__link",
-        ".product-title a",
-        ".caption h4 a"
-      ],
-      "seeds": [
-        "/product-category",
-        "/shop",
-        "/category/accessories",
-        "/product-category/gaming-accessories",
-        "/shop/?swoof=1&product_cat=accessories"
       ],
       "render": true,
       "dynamic_timeout_ms": 45000,
@@ -206,119 +220,46 @@
       "static_timeout_sec": 12,
       "per_site_pages": 10
     },
-    "compume.com.eg": {
-      "product_card": [
-        ".products-grid .product-item",
-        ".product-item",
-        ".product-item-info",
-        ".product-grid-item",
-        ".product.details"
-      ],
-      "name": [
-        "a.product-item-link",
-        ".product-item-link",
-        ".product.name a",
-        ".product-item-name a"
-      ],
-      "price": [
-        ".price-wrapper .price",
-        ".price .price",
-        ".price",
-        ".special-price .price",
-        ".old-price .price"
-      ],
-      "url": [
-        "a.product-item-link",
-        ".product-item a",
-        ".product.name a",
-        ".product-item-name a"
-      ],
-      "seeds": [
-        "/accessories",
-        "/pc-components",
-        "/gaming-accessories",
-        "/gaming",
-        "/products"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
-    },
-    "ahw.store": {
+    "egyptgamestore.com": {
       "product_card": [
         ".grid__item",
         ".product-card",
         ".card-wrapper",
+        "ul.products li.product",
+        ".products .product",
         "[data-product-id]"
       ],
       "name": [
         ".card__heading a",
         ".product-title a",
-        ".card-information__text",
+        "h2.woocommerce-loop-product__title",
         "a.full-unstyled-link",
-        "[itemprop='name']"
+        ".card-information__text"
       ],
       "price": [
-        ".price-item--sale",
         ".price-item--regular",
+        ".price-item--sale",
+        ".woocommerce-Price-amount bdi",
+        ".woocommerce-Price-amount",
         ".price .money",
-        ".price .amount",
-        ".price"
+        ".price .amount"
       ],
       "url": [
         "a.full-unstyled-link",
         ".card__heading a",
-        ".product-title a",
-        "a[href*='/products/']"
+        "a.woocommerce-LoopProduct-link",
+        ".product-title a"
       ],
       "seeds": [
         "/collections",
         "/collections/accessories",
-        "/collections/controllers",
-        "/collections/all"
+        "/products",
+        "/shop",
+        "/product-category/controllers"
       ],
       "render": true,
       "dynamic_timeout_ms": 45000,
       "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "compumarts.com": {
-      "product_card": [
-        ".product-layout",
-        ".product-thumb",
-        ".product-grid .product-layout",
-        ".product-thumb .caption"
-      ],
-      "name": [
-        ".caption h4 a",
-        ".product-thumb .caption h4 a",
-        ".product-title a",
-        ".name a"
-      ],
-      "price": [
-        ".price .price-new",
-        ".price .price-old",
-        ".price",
-        ".price-new",
-        ".price-old"
-      ],
-      "url": [
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".product-title a",
-        ".name a"
-      ],
-      "seeds": [
-        "/index.php?route=product/category",
-        "/accessories",
-        "/gaming-accessories",
-        "/controllers",
-        "/monitors"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
       "per_site_pages": 10
     },
     "games2egypt.com": {
@@ -397,6 +338,158 @@
       "render": true,
       "dynamic_timeout_ms": 45000,
       "static_timeout_sec": 12,
+      "per_site_pages": 10
+    },
+    "ahw.store": {
+      "product_card": [
+        ".grid__item",
+        ".product-card",
+        ".card-wrapper",
+        "[data-product-id]"
+      ],
+      "name": [
+        ".card__heading a",
+        ".product-title a",
+        ".card-information__text",
+        "a.full-unstyled-link",
+        "[itemprop='name']"
+      ],
+      "price": [
+        ".price-item--sale",
+        ".price-item--regular",
+        ".price .money",
+        ".price .amount",
+        ".price"
+      ],
+      "url": [
+        "a.full-unstyled-link",
+        ".card__heading a",
+        ".product-title a",
+        "a[href*='/products/']"
+      ],
+      "seeds": [
+        "/collections",
+        "/collections/accessories",
+        "/collections/controllers",
+        "/collections/all"
+      ],
+      "render": true,
+      "dynamic_timeout_ms": 45000,
+      "static_timeout_sec": 12,
+      "per_site_pages": 10
+    },
+    "egygamer.com": {
+      "product_card": [
+        "ul.products li.product",
+        ".products .product",
+        ".woocommerce ul.products li.product",
+        ".product-grid .product"
+      ],
+      "name": [
+        "h2.woocommerce-loop-product__title",
+        ".woocommerce-loop-product__title",
+        ".product-title a",
+        ".caption h4 a"
+      ],
+      "price": [
+        ".woocommerce-Price-amount bdi",
+        ".woocommerce-Price-amount",
+        ".price .amount",
+        ".price"
+      ],
+      "url": [
+        "a.woocommerce-LoopProduct-link",
+        ".woocommerce-LoopProduct__link",
+        ".product-title a",
+        ".caption h4 a"
+      ],
+      "seeds": [
+        "/product-category",
+        "/shop",
+        "/category/accessories",
+        "/product-category/gaming-accessories",
+        "/shop/?swoof=1&product_cat=accessories"
+      ],
+      "render": true,
+      "dynamic_timeout_ms": 45000,
+      "static_timeout_sec": 12,
+      "per_site_pages": 10
+    },
+    "compume.com.eg": {
+      "product_card": [
+        ".products-grid .product-item",
+        ".product-item",
+        ".product-item-info",
+        ".product-grid-item",
+        ".product.details"
+      ],
+      "name": [
+        "a.product-item-link",
+        ".product-item-link",
+        ".product.name a",
+        ".product-item-name a"
+      ],
+      "price": [
+        ".price-wrapper .price",
+        ".price .price",
+        ".price",
+        ".special-price .price",
+        ".old-price .price"
+      ],
+      "url": [
+        "a.product-item-link",
+        ".product-item a",
+        ".product.name a",
+        ".product-item-name a"
+      ],
+      "seeds": [
+        "/accessories",
+        "/pc-components",
+        "/gaming-accessories",
+        "/gaming",
+        "/products"
+      ],
+      "render": false,
+      "dynamic_timeout_ms": 40000,
+      "static_timeout_sec": 10,
+      "per_site_pages": 10
+    },
+    "compumarts.com": {
+      "product_card": [
+        ".product-layout",
+        ".product-thumb",
+        ".product-grid .product-layout",
+        ".product-thumb .caption"
+      ],
+      "name": [
+        ".caption h4 a",
+        ".product-thumb .caption h4 a",
+        ".product-title a",
+        ".name a"
+      ],
+      "price": [
+        ".price .price-new",
+        ".price .price-old",
+        ".price",
+        ".price-new",
+        ".price-old"
+      ],
+      "url": [
+        ".caption h4 a",
+        ".product-thumb a[href]",
+        ".product-title a",
+        ".name a"
+      ],
+      "seeds": [
+        "/index.php?route=product/category",
+        "/accessories",
+        "/gaming-accessories",
+        "/controllers",
+        "/monitors"
+      ],
+      "render": false,
+      "dynamic_timeout_ms": 40000,
+      "static_timeout_sec": 10,
       "per_site_pages": 10
     },
     "gamerscolony.net": {
@@ -630,48 +723,6 @@
       "render": false,
       "dynamic_timeout_ms": 40000,
       "static_timeout_sec": 10,
-      "per_site_pages": 10
-    },
-    "egyptgamestore.com": {
-      "product_card": [
-        ".grid__item",
-        ".product-card",
-        ".card-wrapper",
-        "ul.products li.product",
-        ".products .product",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        "h2.woocommerce-loop-product__title",
-        "a.full-unstyled-link",
-        ".card-information__text"
-      ],
-      "price": [
-        ".price-item--regular",
-        ".price-item--sale",
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .money",
-        ".price .amount"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        "a.woocommerce-LoopProduct-link",
-        ".product-title a"
-      ],
-      "seeds": [
-        "/collections",
-        "/collections/accessories",
-        "/products",
-        "/shop",
-        "/product-category/controllers"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
       "per_site_pages": 10
     }
   }

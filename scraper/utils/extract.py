@@ -60,7 +60,6 @@ def _first_attr(node, attrs):
     return ""
 
 def name_from_node(card):
-    # Common visible text locations first
     txt_candidates = [
         ".card__heading a", ".card__heading", ".product-title a", ".product-title",
         "[itemprop='name']", "h3 a", "h2 a", "h3", "h2", "a"
@@ -71,12 +70,10 @@ def name_from_node(card):
             t = el.get_text(" ", strip=True)
             if t:
                 return t
-    # Attributes on anchors/elements
     for el in card.select("a, [data-product-title], [title], [aria-label]"):
         val = _first_attr(el, ["data-product-title", "title", "aria-label"])
         if val and val.strip():
             return val.strip()
-    # Image alt as last resort
     img = card.select_one("img[alt]")
     if img and img.get("alt"):
         return img["alt"].strip()
