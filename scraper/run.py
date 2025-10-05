@@ -2,7 +2,7 @@
 import argparse, json, os, re, traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, quote_plus
 
 import httpx
 import tldextract
@@ -13,13 +13,13 @@ from playwright.sync_api import sync_playwright
 try:
     from scraper.utils.extract import (
         heuristic_cards, detect_currency, parse_price, name_from_node, clean_product_name
-    )  # type: ignore
+    )
 except ModuleNotFoundError:
     import sys as _sys, os as _os
     _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
     from utils.extract import (
         heuristic_cards, detect_currency, parse_price, name_from_node, clean_product_name
-    )  # type: ignore
+    )
 
 OUT_DIR = "out"
 OUT_JSONL = os.path.join(OUT_DIR, "snapshot.jsonl")
@@ -168,6 +168,49 @@ def allowed_by_filters(name: str, url: str, cfg: Dict[str, Any], price: float | 
         return False
     return True
 
+# ---------------- Provider fetch -----------------
+def fetch_with_provider(url: str, provider_cfg: Dict[str, Any]) -> str:
+    name = (provider_cfg or {}).get("name")
+    key_env = (provider_cfg or {}).get("key_env")
+    api_key = os.environ.get(key_env or "") if key_env else None
+    geo = (provider_cfg or {}).get("geo")
+    render_js = bool((provider_cfg or {}).get("render_js", True))
+    timeout_ms = int((provider_cfg or {}).get("timeout_ms", 120000))
+
+    if not name:
+        return ""
+    if not api_key:
+        raise RuntimeError(f"Provider '{name}' requires environment variable '{key_env}' to be set")
+
+    headers = {"User-Agent": UA}
+    with httpx.Client(follow_redirects=True, timeout=timeout_ms/1000.0, headers=headers) as client:
+        if name.lower() == "scrapingbee":
+            params = {"api_key": api_key, "url": url, "render_js": "true" if render_js else "false"}
+            if geo: params["country_code"] = geo
+            r = client.get("https://app.scrapingbee.com/api/v1/", params=params)
+            r.raise_for_status()
+            return r.text
+
+        if name.lower() == "scraperapi":
+            params = {"api_key": api_key, "url": url}
+            if render_js: params["render"] = "true"
+            if geo: params["country_code"] = geo
+            r = client.get("http://api.scraperapi.com", params=params)
+            r.raise_for_status()
+            return r.text
+
+        if name.lower() == "zyte":
+            # Zyte API v1/extract
+            json_body = {"url": url, "browserHtml": render_js, "httpResponseBody": True}
+            if geo: json_body["geolocation"] = {"country": geo}
+            r = httpx.post("https://api.zyte.com/v1/extract", json=json_body, timeout=timeout_ms/1000.0, auth=(api_key, ""))
+            r.raise_for_status()
+            data = r.json()
+            html = data.get("browserHtml") or data.get("httpResponseBody") or ""
+            return html if isinstance(html, str) else ""
+
+        raise ValueError(f"Unknown provider '{name}'")
+
 def scrape_with_playwright(url: str, timeout_ms: int = 60000) -> str:
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
@@ -182,15 +225,15 @@ def scrape_with_playwright(url: str, timeout_ms: int = 60000) -> str:
         page.add_init_script("Object.defineProperty(navigator, 'languages', {get: () => ['en-US','en']});")
         page.add_init_script("Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]});")
         page.goto(url, wait_until="domcontentloaded")
-        texts = ["Load more","Show more","View more","عرض المزيد","مشاهدة المزيد"]
-        for _ in range(4):
+        texts = ["Load more","Show more","View more","عرض المزيد","مشاهدة المزيد","Load More","More products","Show all"]
+        for _ in range(6):
             for t in texts:
                 try:
                     page.get_by_text(t, exact=False).click(timeout=800)
                     page.wait_for_timeout(900)
                 except Exception:
                     pass
-            page.mouse.wheel(0, 1500)
+            page.mouse.wheel(0, 1600)
             page.wait_for_timeout(900)
         html = page.content()
         context.close()
@@ -230,24 +273,35 @@ def build_jsonld_name_map(soup) -> dict:
             try:
                 data = json.loads(raw)
             except Exception:
+                chunks = re.findall(r'\{.*?\}|\[.*?\]', raw, flags=re.S)
+                for ch in chunks:
+                    try:
+                        data = json.loads(ch)
+                    except Exception:
+                        continue
+                    _jsonld_collect(data, mapping)
                 continue
-            def handle(obj):
-                if isinstance(obj, dict):
-                    typ = obj.get("@type") or obj.get("type")
-                    if typ in ("Product", "ListItem"):
-                        url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
-                        name = obj.get("name") or (obj.get("item") or {}).get("name")
-                        if url and name:
-                            mapping[canon_url(url)] = name
-                    for v in obj.values():
-                        handle(v)
-                elif isinstance(obj, list):
-                    for it in obj:
-                        handle(it)
-            handle(data)
+            _jsonld_collect(data, mapping)
     except Exception as e:
-        print("[json-ld] warn:", e, flush=True)
+        print("[json-ld] parse warning:", e, flush=True)
     return mapping
+
+def _jsonld_collect(obj, mapping: dict):
+    try:
+        if isinstance(obj, dict):
+            typ = obj.get("@type") or obj.get("type")
+            if typ in ("Product", "ListItem"):
+                url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
+                name = obj.get("name") or (obj.get("item") or {}).get("name")
+                if url and name:
+                    mapping[canon_url(url)] = name
+            for v in obj.values():
+                _jsonld_collect(v, mapping)
+        elif isinstance(obj, list):
+            for it in obj:
+                _jsonld_collect(it, mapping)
+    except Exception:
+        pass
 
 def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html, "lxml")
@@ -268,7 +322,7 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
     if not cards:
         cards = heuristic_cards(soup)
 
-    for card in cards[:1000]:
+    for card in cards[:1500]:
         name = ""
         if isinstance(override.get("name", None), list):
             name = clean_product_name(card, override["name"])
@@ -289,13 +343,15 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
                 name = nm
 
         price_text = best_text(card, [".price", ".price .amount", ".price .money", ".price-wrapper .price", ".Price .money", ".current-price", "[itemprop='price']", ".woocommerce-Price-amount bdi", ".woocommerce-Price-amount"])
+        if not price_text:
+            for attr in ["data-price","data-product-price","data-price-amount","data-amount","data-price-value"]:
+                if card.has_attr(attr) and str(card[attr]).strip():
+                    price_text = str(card[attr])
+                    break
         price_val, raw_price = parse_price(price_text if price_text else card.get_text(" ", strip=True))
 
         currency = detect_currency(price_text) or "EGP"
-        status = "Available"  # default unless explicit out-of-stock tokens exist
-        t = card.get_text(" ", strip=True).lower()
-        if any(k in t for k in ["out of stock", "sold out", "غير متوفر", "غير متاح", "نفدت الكمية", "out-of-stock", "unavailable"]):
-            status = "Out of Stock"
+        status = infer_availability(card.get_text(" ", strip=True))
 
         pf = _as_dict(cfg.get("price_filter"), {})
         if (price_val is None) and (pf.get("min") is not None):
@@ -324,7 +380,13 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
 
     return records
 
-def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
+def get_html_dynamic_then_static(url: str, timeout_ms: int, provider_cfg: Optional[Dict[str, Any]] = None) -> str:
+    # Prefer provider when configured
+    if provider_cfg and provider_cfg.get("name"):
+        try:
+            return fetch_with_provider(url, provider_cfg)
+        except Exception as e:
+            print("[provider] fallback to browser on error:", e, flush=True)
     try:
         return scrape_with_playwright(url, timeout_ms=timeout_ms)
     except Exception:
@@ -338,15 +400,16 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
     overrides_raw = _as_dict(cfg.get("overrides"), {})
     override = _as_dict(overrides_raw.get(site_dom), {})
 
-    timeout_ms = override.get("dynamic_timeout_ms", _as_dict(cfg.get("limits"), {}).get("timeout_ms", 60000))
-    static_timeout = override.get("static_timeout_sec", 12)
-    max_pages = override.get("per_site_pages", _as_dict(cfg.get("limits"), {}).get("per_site_pages", 10))
+    timeout_ms = int(override.get("dynamic_timeout_ms", _as_dict(cfg.get("limits"), {}).get("timeout_ms", 60000)))
+    static_timeout = int(override.get("static_timeout_sec", 18))
+    max_pages = int(override.get("per_site_pages", _as_dict(cfg.get("limits"), {}).get("per_site_pages", 10)))
     prefer_static = (override.get("render") is False)
+    provider_cfg = _as_dict(override.get("provider"), {})
 
     visited: Set[str] = set()
     queue: List[str] = [site_url]
 
-    for s in _as_list(override.get("seeds"))[:10]:
+    for s in _as_list(override.get("seeds"))[:12]:
         try:
             u = urljoin(site_url, s)
             if u not in queue:
@@ -358,14 +421,20 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
     unlimited = (limit == 0)
 
     def fetch(cur: str) -> str:
+        # If provider configured, use provider; else static/dynamic logic
+        if provider_cfg.get("name"):
+            try:
+                return fetch_with_provider(cur, provider_cfg)
+            except Exception as e:
+                print(f"[{site_dom}] provider error on {cur}: {e}", flush=True)
         if prefer_static:
             try:
                 return fetch_static(cur, timeout=static_timeout)
             except Exception:
                 pass
-        return get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
+        return get_html_dynamic_then_static(cur, timeout_ms=timeout_ms, provider_cfg=None)
 
-    while queue and (unlimited or len(all_records) < limit) and len(visited) < 5000:
+    while queue and (unlimited or len(all_records) < limit) and len(visited) < 8000:
         cur = queue.pop(0)
         if cur in visited:
             continue
@@ -375,8 +444,8 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
             if not html:
                 continue
             recs = extract_products(html, cur, site_dom, override, cfg)
-            if prefer_static and not recs:
-                html2 = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms)
+            if prefer_static and not recs and not provider_cfg.get("name"):
+                html2 = get_html_dynamic_then_static(cur, timeout_ms=timeout_ms, provider_cfg=provider_cfg)
                 if html2 and html2 != html:
                     recs = extract_products(html2, cur, site_dom, override, cfg)
             if recs:
@@ -411,7 +480,7 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
                     if urlparse(u).scheme.startswith("http") and same_domain(u, cur):
                         nexts.append(u)
             for nxt in nexts:
-                if nxt not in visited and nxt not in queue and len(queue) < 60:
+                if nxt not in visited and nxt not in queue and len(queue) < 80:
                     queue.append(nxt)
             max_pages -= 1
 

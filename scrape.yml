@@ -1,0 +1,49 @@
+
+name: Scrape & Post
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      # Optional secrets. Set only those you plan to use.
+      SCRAPINGBEE_API_KEY: ${{ secrets.SCRAPINGBEE_API_KEY }}
+      SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}
+      ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install httpx==0.27.0 beautifulsoup4==4.12.3 lxml==5.2.2 tldextract==5.1.2 tenacity==8.2.3 playwright==1.45.0
+          python -m playwright install --with-deps chromium
+
+      - name: Run scraper (unblocker-ready)
+        run: |
+          mkdir -p out
+          python scraper/run.py --limit 0
+
+      - name: Commit snapshot
+        run: |
+          mkdir -p data
+          cp -f out/snapshot.csv data/snapshot.csv || true
+          cp -f out/snapshot.jsonl data/snapshot.jsonl || true
+          git add data/snapshot.csv data/snapshot.jsonl || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update snapshot $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "no changes"
+          git push || true

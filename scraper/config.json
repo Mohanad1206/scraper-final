@@ -1,729 +1,146 @@
 {
-  "limits": {
-    "per_site_products": 500,
-    "per_site_pages": 10,
-    "timeout_ms": 60000,
-    "concurrency": 2
-  },
   "price_filter": {
     "min": 100,
     "max": 2000,
     "currency": "EGP"
   },
   "filters": {
-    "exclude_keywords": [
-      "gift card",
-      "giftcard",
-      "voucher",
-      "steam",
-      "origin",
-      "playstation",
-      "ps4",
-      "ps5",
-      "xbox",
-      "nintendo",
-      "switch",
-      "console",
-      "game disk",
-      "game-disc",
-      "disc",
-      "digital code",
-      "download code",
-      "pre-order",
-      "preorder",
-      "video game",
-      "psn",
-      "xbl",
-      "eshop",
-      "credit",
-      "coins",
-      "diamonds",
-      "gems"
-    ],
     "include_keywords": [
-      "accessory",
+      "accessor",
       "accessories",
-      "gaming accessories",
+      "controller",
+      "controllers",
       "keyboard",
-      "mechanical keyboard",
-      "keycaps",
-      "switch",
-      "switches",
-      "stabilizer",
-      "wrist rest",
       "mouse",
-      "gaming mouse",
-      "mousepad",
-      "mouse pad",
-      "pad",
-      "desk mat",
-      "mouse mat",
-      "bungee",
       "headset",
       "headphone",
-      "earbuds",
-      "microphone",
-      "mic",
+      "audio",
       "webcam",
-      "camera",
-      "speaker",
-      "soundbar",
-      "audio interface",
-      "dac",
-      "amp",
       "monitor",
-      "screen",
-      "stand",
-      "arm",
       "mount",
-      "holder",
-      "bracket",
-      "controller",
-      "gamepad",
-      "joystick",
-      "steering wheel",
-      "wheel",
-      "shifter",
-      "pedals",
-      "dock",
-      "charging dock",
-      "usb hub",
-      "hub",
-      "dongle",
+      "stand",
+      "case",
+      "cooler",
+      "fan",
       "cable",
       "adapter",
-      "extender",
-      "splitter",
-      "switcher",
-      "converter",
-      "cooler",
-      "cooling pad",
-      "laptop stand",
-      "rgb",
-      "led",
-      "fan",
-      "case fan",
-      "thermal paste",
-      "heatsink",
-      "pc case",
-      "case",
-      "pci riser",
-      "riser",
-      "chair",
-      "gaming chair",
-      "headphone stand",
-      "controller stand",
-      "desk",
-      "bag",
-      "backpack",
-      "sleeve",
-      "cover",
-      "protector",
-      "glass",
-      "screen protector",
-      "power bank",
-      "ups",
-      "surge",
-      "strip",
-      "power strip",
-      "charger",
-      "charging",
-      "battery",
-      "storage",
-      "ssd enclosure",
-      "enclosure",
-      "hdd cage"
+      "peripherals",
+      "gaming-gear",
+      "gaming accessories"
+    ],
+    "exclude_keywords": [
+      "gift card",
+      "voucher",
+      "top up",
+      "recharge",
+      "digital code",
+      "nintendo",
+      "playstation",
+      "ps5",
+      "ps4",
+      "xbox",
+      "steam",
+      "game",
+      "video game",
+      "console"
     ]
+  },
+  "limits": {
+    "per_site_pages": 12,
+    "timeout_ms": 90000
   },
   "overrides": {
     "shamystores.com": {
-      "product_card": [
-        ".product-grid-item",
-        ".card-wrapper",
-        ".grid__item",
-        ".product-card",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".card__heading",
-        ".card-information__text",
-        "a.full-unstyled-link",
-        "[data-product-title]",
-        "[itemprop='name']",
-        ".product-title a",
-        ".product-title"
-      ],
-      "price": [
-        ".price-item--sale",
-        ".price-item--regular",
-        ".price .money",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        ".product-title a",
-        "a[href*='/products/']"
-      ],
-      "seeds": [
-        "/collections",
-        "/collections/accessories",
-        "/collections/controllers",
-        "/products"
-      ],
       "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "thegamecaveegypt.com": {
-      "product_card": [
-        ".grid__item",
-        ".card-wrapper",
-        ".product-card",
-        "ul.products li.product",
-        ".products .product",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        "h2.woocommerce-loop-product__title",
-        "a.full-unstyled-link",
-        ".card-information__text"
-      ],
-      "price": [
-        ".price-item--regular",
-        ".price-item--sale",
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .money",
-        ".price .amount"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        "a.woocommerce-LoopProduct-link",
-        ".product-title a"
-      ],
+      "per_site_pages": 12,
+      "dynamic_timeout_ms": 110000,
+      "static_timeout_sec": 20,
       "seeds": [
-        "/collections",
-        "/collections/accessories",
-        "/collections/gaming-accessories",
-        "/products",
-        "/collections/all"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "egyptgamestore.com": {
-      "product_card": [
-        ".grid__item",
-        ".product-card",
-        ".card-wrapper",
-        "ul.products li.product",
-        ".products .product",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        "h2.woocommerce-loop-product__title",
-        "a.full-unstyled-link",
-        ".card-information__text"
-      ],
-      "price": [
-        ".price-item--regular",
-        ".price-item--sale",
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .money",
-        ".price .amount"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        "a.woocommerce-LoopProduct-link",
-        ".product-title a"
-      ],
-      "seeds": [
-        "/collections",
-        "/collections/accessories",
-        "/products",
-        "/shop",
-        "/product-category/controllers"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "games2egypt.com": {
-      "product_card": [
-        ".grid__item",
-        ".product-card",
-        ".card-wrapper",
-        ".product-grid-item",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        "a.full-unstyled-link",
-        ".card-information__text"
-      ],
-      "price": [
-        ".price-item--sale",
-        ".price-item--regular",
-        ".price .money",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        ".product-title a",
-        ".product-card a[href]"
-      ],
-      "seeds": [
-        "/collections/accessories",
-        "/collections/controllers",
         "/collections/all",
-        "/products"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "gamesworldegypt.com": {
-      "product_card": [
-        ".grid__item",
-        ".product-card",
-        ".card-wrapper",
-        "ul.products li.product",
-        ".products .product"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        "h2.woocommerce-loop-product__title",
-        "a.full-unstyled-link"
-      ],
-      "price": [
-        ".price-item--regular",
-        ".price-item--sale",
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .money",
-        ".price .amount"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        "a.woocommerce-LoopProduct-link",
-        ".product-title a"
-      ],
-      "seeds": [
-        "/collections",
         "/collections/accessories",
-        "/products",
-        "/shop",
-        "/product-category/controllers"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
-    },
-    "ahw.store": {
-      "product_card": [
-        ".grid__item",
-        ".product-card",
-        ".card-wrapper",
-        "[data-product-id]"
-      ],
-      "name": [
-        ".card__heading a",
-        ".product-title a",
-        ".card-information__text",
-        "a.full-unstyled-link",
-        "[itemprop='name']"
-      ],
-      "price": [
-        ".price-item--sale",
-        ".price-item--regular",
-        ".price .money",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.full-unstyled-link",
-        ".card__heading a",
-        ".product-title a",
-        "a[href*='/products/']"
-      ],
-      "seeds": [
-        "/collections",
-        "/collections/accessories",
-        "/collections/controllers",
-        "/collections/all"
-      ],
-      "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
+        "/collections/gaming-accessories"
+      ]
     },
     "egygamer.com": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".woocommerce ul.products li.product",
-        ".product-grid .product"
-      ],
-      "name": [
-        "h2.woocommerce-loop-product__title",
-        ".woocommerce-loop-product__title",
-        ".product-title a",
-        ".caption h4 a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-LoopProduct__link",
-        ".product-title a",
-        ".caption h4 a"
-      ],
-      "seeds": [
-        "/product-category",
-        "/shop",
-        "/category/accessories",
-        "/product-category/gaming-accessories",
-        "/shop/?swoof=1&product_cat=accessories"
-      ],
       "render": true,
-      "dynamic_timeout_ms": 45000,
-      "static_timeout_sec": 12,
-      "per_site_pages": 10
+      "per_site_pages": 10,
+      "dynamic_timeout_ms": 110000,
+      "static_timeout_sec": 20,
+      "seeds": [
+        "/product-category/gaming-accessories",
+        "/category/accessories",
+        "/shop/?swoof=1&product_cat=accessories"
+      ]
+    },
+    "thegamecaveegypt.com": {
+      "render": true,
+      "per_site_pages": 12,
+      "dynamic_timeout_ms": 110000,
+      "static_timeout_sec": 20,
+      "seeds": [
+        "/collections/all",
+        "/collections/accessories",
+        "/collections/gaming-accessories"
+      ]
     },
     "compume.com.eg": {
-      "product_card": [
-        ".products-grid .product-item",
-        ".product-item",
-        ".product-item-info",
-        ".product-grid-item",
-        ".product.details"
-      ],
-      "name": [
-        "a.product-item-link",
-        ".product-item-link",
-        ".product.name a",
-        ".product-item-name a"
-      ],
-      "price": [
-        ".price-wrapper .price",
-        ".price .price",
-        ".price",
-        ".special-price .price",
-        ".old-price .price"
-      ],
-      "url": [
-        "a.product-item-link",
-        ".product-item a",
-        ".product.name a",
-        ".product-item-name a"
-      ],
+      "render": true,
+      "per_site_pages": 10,
+      "dynamic_timeout_ms": 110000,
+      "static_timeout_sec": 20,
       "seeds": [
-        "/accessories",
-        "/pc-components",
-        "/gaming-accessories",
-        "/gaming",
-        "/products"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
+        "/product-category/accessories",
+        "/?swoof=1&product_cat=accessories"
+      ]
     },
     "compumarts.com": {
-      "product_card": [
-        ".product-layout",
-        ".product-thumb",
-        ".product-grid .product-layout",
-        ".product-thumb .caption"
-      ],
-      "name": [
-        ".caption h4 a",
-        ".product-thumb .caption h4 a",
-        ".product-title a",
-        ".name a"
-      ],
-      "price": [
-        ".price .price-new",
-        ".price .price-old",
-        ".price",
-        ".price-new",
-        ".price-old"
-      ],
-      "url": [
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".product-title a",
-        ".name a"
-      ],
+      "render": true,
+      "per_site_pages": 10,
+      "dynamic_timeout_ms": 110000,
+      "static_timeout_sec": 20,
       "seeds": [
-        "/index.php?route=product/category",
-        "/accessories",
-        "/gaming-accessories",
-        "/controllers",
-        "/monitors"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
-    },
-    "gamerscolony.net": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".woocommerce ul.products li.product"
-      ],
-      "name": [
-        ".woocommerce-loop-product__title",
-        "h2.woocommerce-loop-product__title",
-        ".product-title a",
-        ".woocommerce-loop-product__title a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-loop-product__link",
-        ".product-title a"
-      ],
-      "seeds": [
-        "/product-category",
-        "/shop",
         "/product-category/accessories",
-        "/product-category/controllers"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
+        "/?swoof=1&product_cat=accessories"
+      ]
     },
-    "egyptlaptop.com": {
-      "product_card": [
-        ".product-item",
-        ".product-item-info",
-        ".product-grid .product-item",
-        ".product-layout",
-        ".product-thumb"
-      ],
-      "name": [
-        "a.product-item-link",
-        ".product-item-link",
-        ".caption h4 a",
-        ".product-title a",
-        ".name a"
-      ],
-      "price": [
-        ".price .price",
-        ".price-wrapper .price",
-        ".price",
-        ".price .price-new",
-        ".price-new"
-      ],
-      "url": [
-        "a.product-item-link",
-        ".product-item a",
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".name a"
-      ],
-      "seeds": [
-        "/accessories",
-        "/monitors",
-        "/keyboards",
-        "/mouse",
-        "/pc-accessories"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
+    "amazon.com": {
+      "provider": {
+        "name": "scrapingbee",
+        "key_env": "SCRAPINGBEE_API_KEY",
+        "geo": "AE",
+        "render_js": true,
+        "timeout_ms": 120000
+      },
+      "per_site_pages": 6,
+      "render": true
     },
-    "hardwaremarket.net": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".product-layout",
-        ".product-thumb"
-      ],
-      "name": [
-        ".woocommerce-loop-product__title",
-        "h2.woocommerce-loop-product__title",
-        ".caption h4 a",
-        ".name a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price",
-        ".price-new",
-        ".price .price-new"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-loop-product__link",
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".name a"
-      ],
+    "noon.com": {
+      "provider": {
+        "name": "scrapingbee",
+        "key_env": "SCRAPINGBEE_API_KEY",
+        "geo": "AE",
+        "render_js": true,
+        "timeout_ms": 120000
+      },
+      "per_site_pages": 8,
+      "render": true,
       "seeds": [
-        "/product-category",
-        "/shop",
-        "/product-category/accessories",
-        "/controllers"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
+        "/uae-en/search?q=gaming%20accessories"
+      ]
     },
-    "pcs-souq.com": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".product-layout",
-        ".product-thumb",
-        ".product-grid .product-layout"
-      ],
-      "name": [
-        ".woocommerce-loop-product__title",
-        "h2.woocommerce-loop-product__title",
-        ".caption h4 a",
-        ".name a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price",
-        ".price-new"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-loop-product__link",
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".name a"
-      ],
+    "jumia.com.eg": {
+      "provider": {
+        "name": "scrapingbee",
+        "key_env": "SCRAPINGBEE_API_KEY",
+        "geo": "EG",
+        "render_js": true,
+        "timeout_ms": 120000
+      },
+      "per_site_pages": 8,
+      "render": true,
       "seeds": [
-        "/product-category",
-        "/shop",
-        "/product-category/accessories",
-        "/controllers"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
-    },
-    "rabbitstore-eg.com": {
-      "product_card": [
-        "ul.products li.product",
-        ".products .product",
-        ".product-layout",
-        ".product-thumb"
-      ],
-      "name": [
-        ".woocommerce-loop-product__title",
-        "h2.woocommerce-loop-product__title",
-        ".caption h4 a",
-        ".product-title a",
-        ".name a"
-      ],
-      "price": [
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price",
-        ".price-new"
-      ],
-      "url": [
-        "a.woocommerce-LoopProduct-link",
-        ".woocommerce-loop-product__link",
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        ".name a"
-      ],
-      "seeds": [
-        "/product-category",
-        "/shop",
-        "/product-category/accessories",
-        "/controllers"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
-    },
-    "tv-it.com": {
-      "product_card": [
-        ".product-item",
-        ".product-layout",
-        ".product-thumb",
-        "ul.products li.product",
-        ".products .product"
-      ],
-      "name": [
-        "a.product-item-link",
-        ".caption h4 a",
-        ".woocommerce-loop-product__title",
-        ".name a"
-      ],
-      "price": [
-        ".price .price",
-        ".price-new",
-        ".woocommerce-Price-amount bdi",
-        ".woocommerce-Price-amount",
-        ".price .amount",
-        ".price"
-      ],
-      "url": [
-        "a.product-item-link",
-        ".caption h4 a",
-        ".product-thumb a[href]",
-        "a.woocommerce-LoopProduct-link",
-        ".name a"
-      ],
-      "seeds": [
-        "/index.php?route=product/category",
-        "/accessories",
-        "/controllers",
-        "/keyboards",
-        "/mouse"
-      ],
-      "render": false,
-      "dynamic_timeout_ms": 40000,
-      "static_timeout_sec": 10,
-      "per_site_pages": 10
+        "/catalog/?q=gaming+accessories"
+      ]
     }
   }
 }
