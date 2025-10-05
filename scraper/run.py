@@ -11,11 +11,15 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from playwright.sync_api import sync_playwright
 
 try:
-    from scraper.utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
+    from scraper.utils.extract import (
+        heuristic_cards, detect_currency, parse_price, name_from_node, clean_product_name
+    )  # type: ignore
 except ModuleNotFoundError:
     import sys as _sys, os as _os
     _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
-    from utils.extract import heuristic_cards, detect_currency, parse_price, name_from_node  # type: ignore
+    from utils.extract import (
+        heuristic_cards, detect_currency, parse_price, name_from_node, clean_product_name
+    )  # type: ignore
 
 OUT_DIR = "out"
 OUT_JSONL = os.path.join(OUT_DIR, "snapshot.jsonl")
@@ -27,36 +31,29 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 FIELDS = ["timestamp_iso","site_name","product_name","sku","product_url","status","price_value","currency","raw_price_text","source_url","notes"]
 
 def _strip_json_comments(s: str) -> str:
-    # Remove // line comments and /* block */ comments
     s = re.sub(r'//.*', '', s)
     s = re.sub(r'/\*.*?\*/', '', s, flags=re.S)
     return s
 
 def _as_dict(x, default=None):
-    if isinstance(x, dict):
-        return x
-    return {} if default is None else default
+    return x if isinstance(x, dict) else ({} if default is None else default)
 
 def _as_list(x):
     return x if isinstance(x, list) else []
 
 def load_config() -> Dict[str, Any]:
-    # Robust loader that tolerates comments/trailing commas and defends against wrong top-level types.
     if not os.path.exists(CONFIG_PATH):
-        raise FileNotFoundError(f"Missing {CONFIG_PATH}")
+        return {}
     raw = open(CONFIG_PATH, "r", encoding="utf-8").read()
     cleaned = _strip_json_comments(raw).strip()
-    # allow trailing commas (simple heuristic)
     cleaned = re.sub(r',(\s*[}\]])', r'\1', cleaned)
     try:
         data = json.loads(cleaned)
     except Exception as e:
-        print("[config] JSON parse failed, falling back to empty defaults:", e, flush=True)
+        print("[config] parse error:", e, flush=True)
         return {}
     if not isinstance(data, dict):
-        print(f"[config] Top-level type is {type(data).__name__}, expected object. Using defaults.", flush=True)
         return {}
-    # normalize critical sections
     data["filters"] = _as_dict(data.get("filters"), {})
     data["overrides"] = _as_dict(data.get("overrides"), {})
     data["limits"] = _as_dict(data.get("limits"), {})
@@ -64,19 +61,17 @@ def load_config() -> Dict[str, Any]:
 
 def load_sites() -> List[str]:
     if not os.path.exists(SITES_PATH):
-        raise FileNotFoundError(f"Missing {SITES_PATH}")
-    lines = []
-    with open(SITES_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            s = line.strip()
-            if not s or s.startswith("#"):
-                continue
-            # normalize markdown bullets etc.
-            s = s.lstrip("-•* ").strip()
-            if s and not s.startswith("http"):
-                s = "https://" + s
-            lines.append(s)
-    return lines
+        return []
+    out = []
+    for line in open(SITES_PATH, "r", encoding="utf-8"):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        s = s.lstrip("-•* ").strip()
+        if s and not s.startswith("http"):
+            s = "https://" + s
+        out.append(s)
+    return out
 
 def domain_of(url: str) -> str:
     ext = tldextract.extract(url)
@@ -93,7 +88,7 @@ def write_jsonl(records: List[Dict[str, Any]]):
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(OUT_JSONL, "a", encoding="utf-8") as f:
         for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\\n")
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 def write_csv(records: List[Dict[str, Any]]):
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -108,7 +103,7 @@ def write_csv(records: List[Dict[str, Any]]):
 
 def normalize_text(s: Optional[str]) -> str:
     if not s: return ""
-    s = re.sub(r"\\s+", " ", s)
+    s = re.sub(r"\s+", " ", s)
     return s.strip()
 
 def absolutize(base: str, href: str) -> str:
@@ -188,15 +183,15 @@ def scrape_with_playwright(url: str, timeout_ms: int = 60000) -> str:
         page.add_init_script("Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3]});")
         page.goto(url, wait_until="domcontentloaded")
         texts = ["Load more","Show more","View more","عرض المزيد","مشاهدة المزيد"]
-        for _ in range(3):
+        for _ in range(4):
             for t in texts:
                 try:
-                    page.get_by_text(t, exact=False).click(timeout=1000)
-                    page.wait_for_timeout(1200)
+                    page.get_by_text(t, exact=False).click(timeout=800)
+                    page.wait_for_timeout(900)
                 except Exception:
                     pass
-            page.mouse.wheel(0, 1400)
-            page.wait_for_timeout(800)
+            page.mouse.wheel(0, 1500)
+            page.wait_for_timeout(900)
         html = page.content()
         context.close()
         browser.close()
@@ -226,25 +221,32 @@ def canon_url(u: str) -> str:
 
 def build_jsonld_name_map(soup) -> dict:
     mapping = {}
-    for s in soup.find_all("script", attrs={"type":"application/ld+json"}):
-        try:
-            data = json.loads(s.string or "")
-        except Exception:
-            continue
-        def handle(obj):
-            if isinstance(obj, dict):
-                typ = obj.get("@type") or obj.get("type")
-                if typ in ("Product", "ListItem"):
-                    url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
-                    name = obj.get("name") or (obj.get("item") or {}).get("name")
-                    if url and name:
-                        mapping[canon_url(url)] = name
-                for v in obj.values():
-                    handle(v)
-            elif isinstance(obj, list):
-                for it in obj:
-                    handle(it)
-        handle(data)
+    try:
+        scripts = soup.find_all("script", attrs={"type":"application/ld+json"})
+        for s in scripts:
+            raw = s.string or ""
+            if not raw.strip():
+                continue
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            def handle(obj):
+                if isinstance(obj, dict):
+                    typ = obj.get("@type") or obj.get("type")
+                    if typ in ("Product", "ListItem"):
+                        url = obj.get("url") or (obj.get("item") or {}).get("@id") or (obj.get("item") or {}).get("url")
+                        name = obj.get("name") or (obj.get("item") or {}).get("name")
+                        if url and name:
+                            mapping[canon_url(url)] = name
+                    for v in obj.values():
+                        handle(v)
+                elif isinstance(obj, list):
+                    for it in obj:
+                        handle(it)
+            handle(data)
+    except Exception as e:
+        print("[json-ld] warn:", e, flush=True)
     return mapping
 
 def extract_products(html: str, base_url: str, site_label: str, override: Optional[Dict[str, Any]], cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -266,14 +268,14 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
     if not cards:
         cards = heuristic_cards(soup)
 
-    for card in cards[:800]:
+    for card in cards[:1000]:
         name = ""
         if isinstance(override.get("name", None), list):
-            name = best_text(card, override["name"])
+            name = clean_product_name(card, override["name"])
         if not name:
-            name = best_text(card, ["[itemprop='name']", ".product-title", ".product-name", "h3 a", "h2 a", "h3", "h2", "a"])
+            name = clean_product_name(card, ["[itemprop='name']", ".product-title a", ".product-title", ".product-name a", ".product-name", "h3 a", "h2 a", "h3", "h2", "a"])
         if not name:
-            name = name_from_node(card)
+            name = clean_product_name(card, []) or name_from_node(card)
 
         url = ""
         if isinstance(override.get("url", None), list):
@@ -290,7 +292,10 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
         price_val, raw_price = parse_price(price_text if price_text else card.get_text(" ", strip=True))
 
         currency = detect_currency(price_text) or "EGP"
-        status = infer_availability(card.get_text(" ", strip=True))
+        status = "Available"  # default unless explicit out-of-stock tokens exist
+        t = card.get_text(" ", strip=True).lower()
+        if any(k in t for k in ["out of stock", "sold out", "غير متوفر", "غير متاح", "نفدت الكمية", "out-of-stock", "unavailable"]):
+            status = "Out of Stock"
 
         pf = _as_dict(cfg.get("price_filter"), {})
         if (price_val is None) and (pf.get("min") is not None):
@@ -322,7 +327,7 @@ def extract_products(html: str, base_url: str, site_label: str, override: Option
 def get_html_dynamic_then_static(url: str, timeout_ms: int) -> str:
     try:
         return scrape_with_playwright(url, timeout_ms=timeout_ms)
-    except Exception as e:
+    except Exception:
         try:
             return fetch_static(url)
         except Exception:
@@ -388,11 +393,16 @@ def scrape_site(site_url: str, cfg: Dict[str, Any], limit: int) -> List[Dict[str
             traceback.print_exc()
             continue
 
-        # Simple next-page discovery
         if max_pages > 0:
             soup = BeautifulSoup(html, "lxml")
             nexts = []
-            for sel in ["a[rel='next']","link[rel='next']","a.next","a.pagination__next","a.page-link[rel='next']","a[aria-label*='Next' i]","a[href*='?page=']","a[href*='/page/']","li.pagination-next a",".pagination a.next"]:
+            selectors = [
+                "a[rel='next']","link[rel='next']","a.next","a.pagination__next",
+                "a.page-link[rel='next']","a[aria-label*='Next' i]",
+                "a[href*='?page=']","a[href*='/page/']",
+                "li.pagination-next a",".pagination a.next"
+            ]
+            for sel in selectors:
                 for el in soup.select(sel):
                     href = el.get("href") or el.get("content")
                     if not href:
